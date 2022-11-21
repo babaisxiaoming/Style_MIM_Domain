@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="a821fda0-b768-432a-8832-e817636b12d9" name="99jump">
+        <fileTransfer rootFolder="/data02/GaoGL_GRP/GglStuA/wxm" accessType="SFTP" host="202.207.12.156" port="9425" sshConfigId="070af22d-ce89-4d57-aa37-1432fc622293" sshConfig="GglStuA@202.207.12.156:9425 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="641eea07-201c-4f77-afcf-5141eec71644" name="97jump">
+        <fileTransfer rootFolder="/data02/WeiHX_GRP/WhxStuE/wxm" accessType="SFTP" host="202.207.12.156" port="9422" sshConfigId="e201a1fd-b3c3-4e19-ba76-aa5b94ccfeb8" sshConfig="WhxStuE@202.207.12.156:9422 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="46c6babb-b7d6-49ff-b670-c86cbc0d8fd4" name="96jump">
+        <fileTransfer rootFolder="/data02/WeiHX_GRP/WhxStuE/wxm" accessType="SFTP" host="202.207.12.156" port="9422" sshConfigId="e201a1fd-b3c3-4e19-ba76-aa5b94ccfeb8" sshConfig="WhxStuE@202.207.12.156:9422 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

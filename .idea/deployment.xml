@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="GzStuA@202.207.12.156:9423 password" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="GglStuA@202.207.12.156:9425 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/data02/GaoGL_GRP/GglStuA/wxm/project/Style_MIM_Domain" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="GzStuA@202.207.12.156:9423 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/data02/GongZ_GRP/GzStuA/wxm/Style_MIM_Domain" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>
