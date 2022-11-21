@@ -23,3 +23,5 @@ ce_loss = ce_loss(torch.softmax(pred, dim=1), t_pseudo_label)
 print(ce_loss.shape)
 # loss_dice = dice_loss(pred, torch.argmax(t_pseudo_label, dim=1).unsqueeze(1))
 # print(loss_dice)
+
+print('这是一次改动测试')
