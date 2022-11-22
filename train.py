@@ -11,7 +11,7 @@ from pl_interface_stage1 import Interface
 from config.style_uda import get_config
 from utils import update_config, create_path, getresume_path
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
 
 def main(args):

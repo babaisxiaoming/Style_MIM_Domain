@@ -156,19 +156,20 @@ class Rec_Decoder(nn.Module):
 
         self.seg_decoder_1 = Seg_Deep(in_channels=192, scale=8)
         self.seg_decoder_2 = Seg_Deep(in_channels=96, scale=4)
-        self.seg_decoder_3 = Seg_Deep(in_channels=12, scale=1, ratio=1)
+        # self.seg_decoder_3 = Seg_Deep(in_channels=12, scale=1, ratio=1)
 
-        self.rec_decoder_1 = Rec_Deep(in_dim=192 + 4, scale=8)
-        self.rec_decoder_2 = Rec_Deep(in_dim=96 + 4, scale=4)
-        self.rec_decoder_3 = Rec_Deep(in_dim=12 + 4, scale=1)
+        # self.rec_decoder_1 = Rec_Deep(in_dim=192 + 4, scale=8)
+        # self.rec_decoder_2 = Rec_Deep(in_dim=96 + 4, scale=4)
+        # self.rec_decoder_3 = Rec_Deep(in_dim=12 + 4, scale=1)
 
     def forward(self, image, label, decoder_feats):
         # 分割的深度监督
         s_1, s_2, s_3 = decoder_feats
         s_1, s_1_seg_loss = self.seg_decoder_1(label, s_1)
         s_2, s_2_seg_loss = self.seg_decoder_2(label, s_2)
-        s_3, s_3_seg_loss = self.seg_decoder_3(label, s_3)
-        seg_deep_loss = s_1_seg_loss + s_2_seg_loss + s_3_seg_loss
+        # s_3, s_3_seg_loss = self.seg_decoder_3(label, s_3)
+        # seg_deep_loss = s_1_seg_loss + s_2_seg_loss + s_3_seg_loss
+        seg_deep_loss = s_1_seg_loss + s_2_seg_loss
         '''
         torch.Size([1, 4, 28, 28])
         torch.Size([1, 4, 56, 56])
@@ -176,14 +177,14 @@ class Rec_Decoder(nn.Module):
         '''
 
         # 辅助任务深度监督
-        r_1, r_2, r_3 = decoder_feats
-        r_1_rec_loss = self.rec_decoder_1(image, r_1, s_1)
-        r_2_rec_loss = self.rec_decoder_2(image, r_2, s_2)
-        r_3_rec_loss = self.rec_decoder_3(image, r_3, s_3)
-        rec_deep_loss = r_1_rec_loss + r_2_rec_loss + r_3_rec_loss
+        # r_1, r_2, r_3 = decoder_feats
+        # r_1_rec_loss = self.rec_decoder_1(image, r_1, s_1)
+        # r_2_rec_loss = self.rec_decoder_2(image, r_2, s_2)
+        # r_3_rec_loss = self.rec_decoder_3(image, r_3, s_3)
+        # rec_deep_loss = r_1_rec_loss + r_2_rec_loss + r_3_rec_loss
 
-        return seg_deep_loss, rec_deep_loss
-        # return seg_deep_loss
+        # return seg_deep_loss, rec_deep_loss
+        return seg_deep_loss
 
 
 if __name__ == '__main__':

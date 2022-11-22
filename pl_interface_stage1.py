@@ -53,6 +53,9 @@ class Interface(pl.LightningModule):
         self.loss_norm = nn.MSELoss()
         self.dice_loss = DiceLoss(to_onehot_y=True, softmax=True, squared_pred=True, smooth_nr=0.0, smooth_dr=1e-6)
 
+        # best_metric
+        self.best_metric = 0
+
         self.save_hyperparameters(args)
 
     def forward(self):
@@ -80,12 +83,12 @@ class Interface(pl.LightningModule):
         s_f_pred, s_f_pred_norm, _ = self.seg_model(s_data_freq)
 
         # 辅助重构
-        seg_loss, rec_loss = self.rec_model(s_data, s_label, decoder_feats)
+        seg_loss = self.rec_model(s_data, s_label, decoder_feats)
 
         # loss
         train_seg_loss = self.train_loss(s_pred, s_label.long()) + self.train_loss(s_f_pred, s_label.long())
         train_consistency_loss = self.loss_norm(s_f_pred, s_pred)
-        train_rec_loss = seg_loss + rec_loss
+        train_rec_loss = seg_loss
 
         train_loss = train_seg_loss + 0.5 * train_rec_loss + 0.1 * train_consistency_loss
 
@@ -213,6 +216,10 @@ class Interface(pl.LightningModule):
 
         # 三个的平均
         mean_val_dice = torch.stack([mean_val_dice_1, mean_val_dice_2, mean_val_dice_3]).mean()
+
+        if self.best_metric > mean_val_dice:
+            self.best_metric = mean_val_dice
+            wandb.run.summary["best_val_mean_dice"] = self.best_metric
 
         self.log('val_mean_dice_1', mean_val_dice_1)
         self.log('val_mean_dice_2', mean_val_dice_2)

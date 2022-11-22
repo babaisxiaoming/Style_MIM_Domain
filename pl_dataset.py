@@ -2,8 +2,8 @@ import torch
 import pytorch_lightning as pl
 from monai import data
 
-from datasets.MS_CMRSeg_PNG.train_bSSFP_LGE import TrainSet
-# from datasets.MS_CMRSeg_PNG.test_train import TrainSet
+# from datasets.MS_CMRSeg_PNG.train_bSSFP_LGE import TrainSet
+from datasets.MS_CMRSeg_PNG.test_train import TrainSet
 
 from datasets.MS_CMRSeg_PNG.val_LGE_raw_2 import LGE_SET
 
