@@ -117,6 +117,7 @@ def paper_change(source, target, L=0.1):
     # ratio = random.randint(1, 10) / 10
     # src_in_trg[:, h1:h2, w1:w2] = src_in_trg[:, h1:h2, w1:w2] * ratio + trg_in_src[:, h1:h2, w1:w2] * (1 - ratio)
 
+    # 创新点就是两次mixup
     # 标准mixup
     ratio = 0.1 * np.random.random(1)
     src_in_trg = src_in_trg * (1 - ratio) + trg_in_src * ratio
