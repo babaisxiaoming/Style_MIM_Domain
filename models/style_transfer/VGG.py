@@ -211,3 +211,5 @@ if __name__ == '__main__':
     fc_decoder = fc_decoder
     network = Net(vgg, decoder, fc_encoder, fc_decoder)
     y_hat = network(content, style)
+    for i in y_hat:
+        print(i)

@@ -53,7 +53,7 @@ class Interface(pl.LightningModule):
         self.loss_norm = nn.MSELoss()
         self.dice_loss = DiceLoss(to_onehot_y=True, softmax=True, squared_pred=True, smooth_nr=0.0, smooth_dr=1e-6)
 
-        # best_metric
+        # best_mean_dice
         self.best_metric = 0
 
         self.save_hyperparameters(args)
@@ -79,18 +79,18 @@ class Interface(pl.LightningModule):
             images_s_style = torch.stack([images_s_style, images_s_style, images_s_style], dim=1)
 
         # 分割模型
-        s_pred, s_pred_norm, decoder_feats = self.seg_model(images_s_style)
+        s_pred, s_pred_norm, feats = self.seg_model(images_s_style)
         s_f_pred, s_f_pred_norm, _ = self.seg_model(s_data_freq)
 
         # 辅助重构
-        seg_loss = self.rec_model(s_data, s_label, decoder_feats)
+        _, _, _, rec_s_data = self.rec_model(feats)
 
         # loss
         train_seg_loss = self.train_loss(s_pred, s_label.long()) + self.train_loss(s_f_pred, s_label.long())
         train_consistency_loss = self.loss_norm(s_f_pred, s_pred)
-        train_rec_loss = seg_loss
+        train_rec_loss = self.loss_norm(rec_s_data, s_data)
 
-        train_loss = train_seg_loss + 0.5 * train_rec_loss + 0.1 * train_consistency_loss
+        train_loss = train_seg_loss + 0.5 * train_consistency_loss + 0.1 * train_rec_loss
 
         self.log('train_seg_loss', train_seg_loss.item())
         self.log('train_consistency_loss', train_consistency_loss.item())
@@ -102,13 +102,13 @@ class Interface(pl.LightningModule):
 
     def training_epoch_end(self, outputs):
         avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
-        avg_train_seg_loss = torch.stack([x['train_seg_loss'] for x in outputs]).mean()
-        avg_train_consistency_loss = torch.stack([x['train_consistency_loss'] for x in outputs]).mean()
+        avg_seg_loss = torch.stack([x['train_seg_loss'] for x in outputs]).mean()
+        avg_consistency_loss = torch.stack([x['train_consistency_loss'] for x in outputs]).mean()
         avg_train_rec_loss = torch.stack([x['train_rec_loss'] for x in outputs]).mean()
 
         self.log('avg_loss', avg_loss)
-        self.log('avg_train_seg_loss', avg_train_seg_loss)
-        self.log('avg_train_consistency_loss', avg_train_consistency_loss)
+        self.log('avg_seg_loss', avg_seg_loss)
+        self.log('avg_consistency_loss', avg_consistency_loss)
         self.log('avg_train_rec_loss', avg_train_rec_loss)
 
     def validation_step(self, batch, batch_idx):
@@ -177,6 +177,10 @@ class Interface(pl.LightningModule):
         # 三个的平均
         mean_val_dice = torch.stack([mean_val_dice_1, mean_val_dice_2, mean_val_dice_3]).mean()
 
+        if self.best_metric > mean_val_dice:
+            self.best_metric = mean_val_dice
+            wandb.run.summary["best_val_mean_dice"] = self.best_metric
+
         self.log('val_mean_dice_1', mean_val_dice_1)
         self.log('val_mean_dice_2', mean_val_dice_2)
         self.log('val_mean_dice_3', mean_val_dice_3)
@@ -217,10 +221,6 @@ class Interface(pl.LightningModule):
         # 三个的平均
         mean_val_dice = torch.stack([mean_val_dice_1, mean_val_dice_2, mean_val_dice_3]).mean()
 
-        if self.best_metric > mean_val_dice:
-            self.best_metric = mean_val_dice
-            wandb.run.summary["best_val_mean_dice"] = self.best_metric
-
         self.log('val_mean_dice_1', mean_val_dice_1)
         self.log('val_mean_dice_2', mean_val_dice_2)
         self.log('val_mean_dice_3', mean_val_dice_3)
@@ -228,9 +228,9 @@ class Interface(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD([
-            {'params': self.seg_model.parameters(), 'lr': self.args.lr},
-            {'params': self.rec_model.parameters(), 'lr': 1.5e-2},
-        ], momentum=self.args.momentum, weight_decay=self.args.weight_decay)
+            {'params': self.seg_model.parameters()},
+            {'params': self.rec_model.parameters()}, ],
+            lr=self.args.lr, momentum=self.args.momentum, weight_decay=self.args.weight_decay)
         # optimizer = torch.optim.AdamW(self.seg_model.parameters(), lr=self.args.lr, weight_decay=self.args.weight_decay)
         scheduler = LinearWarmupCosineAnnealingLR(optimizer, warmup_epochs=self.args.warmup_epochs,
                                                   max_epochs=self.args.max_epoch)

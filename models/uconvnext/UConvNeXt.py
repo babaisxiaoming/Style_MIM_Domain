@@ -174,6 +174,7 @@ class Up_4x(nn.Module):
         self.dim_scale = 2
         self.norm = nn.BatchNorm2d(dim // 8)
         self.act = nn.LeakyReLU(True)
+        self.out = nn.Conv2d(dim // 8, num_class, 1, 1)
 
     def forward(self, x):
         x = self.up_basic(x)  # 先2倍上采样
@@ -181,6 +182,7 @@ class Up_4x(nn.Module):
         x = x.view(B, -1, self.dim_scale * H, self.dim_scale * W)
         x = self.norm(x)
         x = self.act(x)
+        x = self.out(x)
         return x
 
 
@@ -232,8 +234,6 @@ class Decoder(nn.Module):
             layer_name = f'norm{i_layer}'
             self.add_module(layer_name, layer)
 
-        self.out = nn.Conv2d(dims[-1] // 8, num_class, 1, 1)
-
     def forward(self, downsample):
         outs = []
         up_layer = None
@@ -249,8 +249,7 @@ class Decoder(nn.Module):
                     up_layer = norm_layer(up_layer)
                 up_layer = self.upsample_layers[idx](up_layer)
             outs.append(up_layer)
-        pred = self.out(outs[-1])
-        return tuple(outs), pred
+        return tuple(outs)
 
 
 class UConvNeXt(nn.Module):
@@ -291,16 +290,9 @@ class UConvNeXt(nn.Module):
         '''
         x1, x2, x3, x4 = self.encoder(x)
 
-        '''
-        torch.Size([1, 384, 14, 14])
-        torch.Size([1, 192, 28, 28])
-        torch.Size([1, 96, 56, 56])
-        torch.Size([1, 4, 224, 224])
-        '''
-        decoder_feats, pred = self.decoder([x4, x3, x2, x1])
-        _, d_1, d_2, d_3 = decoder_feats
+        out = self.decoder([x4, x3, x2, x1])
 
-        return pred, x4, [d_1, d_2, d_3]
+        return out[-1], x4, [x4, x3, x2, x1]
 
 
 if __name__ == '__main__':
