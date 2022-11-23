@@ -292,7 +292,8 @@ class UConvNeXt(nn.Module):
 
         out = self.decoder([x4, x3, x2, x1])
 
-        return out[-1], x4, [x4, x3, x2, x1]
+        # pred,pred_norm,encoder_feat,decoder_feat
+        return out[-1], x4, [x4, x3, x2, x1], [out[1], out[2], out[3]]
 
 
 if __name__ == '__main__':

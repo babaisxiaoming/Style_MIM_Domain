@@ -53,7 +53,7 @@ class Interface(pl.LightningModule):
         self.loss_norm = nn.MSELoss()
         self.dice_loss = DiceLoss(to_onehot_y=True, softmax=True, squared_pred=True, smooth_nr=0.0, smooth_dr=1e-6)
 
-        # best_mean_dice
+        # best_metric
         self.best_metric = 0
 
         self.save_hyperparameters(args)
@@ -65,32 +65,24 @@ class Interface(pl.LightningModule):
         s_data, s_label, s_name, t_data, t_label, t_name, s_data_freq = batch
 
         # 风格迁移
-        s_data_temp = torch.clone(s_data).detach()
-        t_data_temp = torch.clone(t_data).detach()
-        times = 1 if self.current_epoch < self.args.warmup_epochs else 3
-        for i in range(times):
-            images_s_style, sampling = style_transfer(self.vgg_encoder,
-                                                      self.vgg_decoder,
-                                                      self.style_encoder,
-                                                      self.style_decoder,
-                                                      s_data_temp,
-                                                      t_data_temp)
-            images_s_style = torch.mean(images_s_style, dim=1)
-            images_s_style = torch.stack([images_s_style, images_s_style, images_s_style], dim=1)
+        images_s_style, sampling = style_transfer(self.vgg_encoder, self.vgg_decoder, self.style_encoder,
+                                                  self.style_decoder, s_data, t_data)
+        images_s_style = torch.mean(images_s_style, dim=1)
+        images_s_style = torch.stack([images_s_style, images_s_style, images_s_style], dim=1)
 
         # 分割模型
-        s_pred, s_pred_norm, feats = self.seg_model(images_s_style)
-        s_f_pred, s_f_pred_norm, _ = self.seg_model(s_data_freq)
+        s_pred, s_pred_norm, encoder_feats, decoder_feats = self.seg_model(images_s_style)
+        s_f_pred, s_f_pred_norm, _, _ = self.seg_model(s_data_freq)
 
         # 辅助重构
-        _, _, _, rec_s_data = self.rec_model(feats)
+        seg_loss = self.rec_model(s_data, s_label, encoder_feats, decoder_feats)
 
         # loss
         train_seg_loss = self.train_loss(s_pred, s_label.long()) + self.train_loss(s_f_pred, s_label.long())
         train_consistency_loss = self.loss_norm(s_f_pred, s_pred)
-        train_rec_loss = self.loss_norm(rec_s_data, s_data)
+        train_rec_loss = seg_loss
 
-        train_loss = train_seg_loss + 0.5 * train_consistency_loss + 0.1 * train_rec_loss
+        train_loss = train_seg_loss + 0.5 * train_rec_loss + 0.1 * train_consistency_loss
 
         self.log('train_seg_loss', train_seg_loss.item())
         self.log('train_consistency_loss', train_consistency_loss.item())
@@ -102,18 +94,18 @@ class Interface(pl.LightningModule):
 
     def training_epoch_end(self, outputs):
         avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
-        avg_seg_loss = torch.stack([x['train_seg_loss'] for x in outputs]).mean()
-        avg_consistency_loss = torch.stack([x['train_consistency_loss'] for x in outputs]).mean()
+        avg_train_seg_loss = torch.stack([x['train_seg_loss'] for x in outputs]).mean()
+        avg_train_consistency_loss = torch.stack([x['train_consistency_loss'] for x in outputs]).mean()
         avg_train_rec_loss = torch.stack([x['train_rec_loss'] for x in outputs]).mean()
 
         self.log('avg_loss', avg_loss)
-        self.log('avg_seg_loss', avg_seg_loss)
-        self.log('avg_consistency_loss', avg_consistency_loss)
+        self.log('avg_train_seg_loss', avg_train_seg_loss)
+        self.log('avg_train_consistency_loss', avg_train_consistency_loss)
         self.log('avg_train_rec_loss', avg_train_rec_loss)
 
     def validation_step(self, batch, batch_idx):
         image, label = batch
-        pred, pred_norm, _ = self.seg_model(image)
+        pred, pred_norm, _, _ = self.seg_model(image)
 
         # 恢复
         row = (256 - image.shape[2]) // 2
@@ -134,38 +126,6 @@ class Interface(pl.LightningModule):
         val_dice_1 = torch.tensor(res['lv'][0])
         val_dice_2 = torch.tensor(res['rv'][0])
         val_dice_3 = torch.tensor(res['myo'][0])
-
-        # self.save_image_online(image, label, pred)
-
-        # class_labels = {0: "bg", 1: "LV", 2: "MYO", 3: "RV"}
-        # wandb.log(
-        #     {"samples": wandb.Image(image, masks={
-        #         "predictions": {
-        #             "mask_data": pred[0],
-        #             "class_labels": class_labels
-        #         },
-        #         "ground_truth": {
-        #             "mask_data": label[0],
-        #             "class_labels": class_labels
-        #         }
-        #     })})
-        # wandb.Image(image, masks={
-        #     "prediction": {"mask_data": pred[0], "class_labels": class_labels},
-        #     "ground truth": {"mask_data": label[0], "class_labels": class_labels}})
-
-        # self.log(
-        #     wandb.Image(image, masks={
-        #     "prediction": {"mask_data": pred[0], "class_labels": class_labels},
-        #     "ground truth": {"mask_data": label[0], "class_labels": class_labels}}))
-
-        # images = [img for img in image]
-        # captions = [f'Ground Truth: {y_i} - Prediction: {y_pred}' for y_i, y_pred in zip(label, pred)]
-        # self.wandb_logger.log_image(key='sample_images', images=images, caption=captions)
-
-        # wandb_logger = WandbLogger()
-        # columns = ['image', 'ground truth', 'prediction']
-        # data = [[wandb.Image(x_i), y_i, y_pred] for x_i, y_i, y_pred in list(zip(image, label, pred))]
-        # wandb_logger.log_table(key='sample_table', columns=columns, data=data)
 
         return {"val_dice_1": val_dice_1, "val_dice_2": val_dice_2, "val_dice_3": val_dice_3}
 
@@ -188,7 +148,7 @@ class Interface(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         image, label = batch
-        pred, pred_norm, _ = self.seg_model(image, False)
+        pred, pred_norm, _, _ = self.seg_model(image, False)
 
         # 恢复
         row = (256 - image.shape[2]) // 2
@@ -228,9 +188,9 @@ class Interface(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD([
-            {'params': self.seg_model.parameters()},
-            {'params': self.rec_model.parameters()}, ],
-            lr=self.args.lr, momentum=self.args.momentum, weight_decay=self.args.weight_decay)
+            {'params': self.seg_model.parameters(), 'lr': self.args.lr},
+            {'params': self.rec_model.parameters(), 'lr': 1.5e-2},
+        ], momentum=self.args.momentum, weight_decay=self.args.weight_decay)
         # optimizer = torch.optim.AdamW(self.seg_model.parameters(), lr=self.args.lr, weight_decay=self.args.weight_decay)
         scheduler = LinearWarmupCosineAnnealingLR(optimizer, warmup_epochs=self.args.warmup_epochs,
                                                   max_epochs=self.args.max_epoch)
